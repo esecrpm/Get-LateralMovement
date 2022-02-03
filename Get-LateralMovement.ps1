@@ -56,7 +56,7 @@ param (
 # Variable assignment
 $Tools = "C:\ForensicTools\ZimmermanTools"
 $Source = $SrcPath+"\Users"
-if ($SrcPath = $Env:SystemDrive) {
+if ($SrcPath -eq $Env:SystemDrive) {
 	$Live = $True
 	$SrcPath = $SrcPath+"\"
 }
