@@ -41,6 +41,7 @@
 	Revision History
 	2022-02-02	0.1	Initial build
 	2022-02-03	0.2	Added test for live system
+	2022-02-03	0.3 Output progress to console
 	
 #>
 
@@ -549,23 +550,34 @@ New-Item -Path $DstPath -ItemType Directory | Out-Null
 
 
 # Event Logs
+Write-Host "Processing Event Logs..."
 & $Tools\EvtxECmd\EvtxECmd.exe -d $SrcPath\Windows\System32\winevt\Logs --inc 6,8,15,16,21,22,25,33,41,91,98,106,131,140,141,168,200,201,400,403,800,1024,1102,1149,4103,4104,4624,4648,4672,4688,4697,4698,4699,4700,4701,4702,4768,4769,4776,4778,4779,5140,5145,5857,5860,5861,7034,7035,7036,7040,7045,8193,8194,8197,31001,31010,40961,40962,53504 --csv $DstPath --csvf LatMvmt_Events.csv | Out-File -Encoding ASCII -FilePath $DstPath\!EvtxECmd_Messages.txt
 
 # Registry
+Write-Host "Processing Registry Hives..."
 & $Tools\RECmd\RECmd.exe -d $SrcPath --bn $Tools\RECmd\BatchExamples\Kroll_Batch.reb --csv $DstPath --csvf LatMvmt_Registry.csv | Out-File -Encoding ASCII -FilePath $DstPath\!RECmd_Messages.txt
+Write-Host "- ShellBags"
 If ($Live) {
 	& $Tools\SBECmd.exe -l --dedupe --csv $DstPath --csvf LatMvmt_ShellBags.csv | Out-File -Encoding ASCII -FilePath $DstPath\!SBECmd_Messages.txt
 } else {
 	& $Tools\SBECmd.exe -d $SrcPath\Users --dedupe --csv $DstPath --csvf LatMvmt_ShellBags.csv | Out-File -Encoding ASCII -FilePath $DstPath\!SBECmd_Messages.txt
-}	
+}
+Write-Host "- ShimCache"
 & $Tools\AppCompatCacheParser.exe -f $SrcPath\Windows\System32\config\SYSTEM --csv $DstPath --csvf LatMvmt_ShimCache.csv | Out-File -Encoding ASCII -FilePath $DstPath\!AppCompatCache_Messages.txt
+Write-Host "- Amcache"
 & $Tools\AmcacheParser.exe -f $SrcPath\Windows\appcompat\Programs\Amcache.hve --csv $DstPath --csvf LatMvmt_Amcache.csv | Out-File -Encoding ASCII -FilePath $DstPath\!Amcache_Source_Messages.txt
 
 # File System
-& $Tools\PECmd.exe -d $SrcPath\Windows\Prefetch -q --csv $DstPath --csvf LatMvmt_Prefetch.csv | Out-File -Encoding ASCII -FilePath $DstPath\!PECmd_Messages.txt
+Write-Host "Processing File System Artifacts..."
+Write-Host "- MFT"
 & $Tools\MFTECmd.exe -f $SrcPath'\$MFT' --csv $DstPath --csvf LatMvmt_mft.csv | Out-File -Encoding ASCII -FilePath $DstPath\!MFTECmd_Messages.txt
+Write-Host "- Prefetch"
+& $Tools\PECmd.exe -d $SrcPath\Windows\Prefetch -q --csv $DstPath --csvf LatMvmt_Prefetch.csv | Out-File -Encoding ASCII -FilePath $DstPath\!PECmd_Messages.txt
+Write-Host "- JumpLists"
 & $Tools\JLECmd.exe -d $SrcPath\Users -q --csv $DstPath --csvf LatMvmt_JumpLists.csv | Out-File -Encoding ASCII -FilePath $DstPath\!JLECmd_Messages.txt
+Write-Host "- Shortcut Files"
 & $Tools\LECmd.exe -d $SrcPath\Users -q --neb --csv $DstPath --csvf LatMvmt_Shortcuts.csv | Out-File -Encoding ASCII -FilePath $DstPath\!LECmd_Messages.txt
+Write-Host "- PowerShell Console History"
 Get-ChildItem $Source -Filter ConsoleHost_history.txt -Recurse -ErrorAction SilentlyContinue -Force | foreach {
 	$Path = ($_.DirectoryName + "\") -replace [Regex]::Escape($Source), $DstPath
 	If (!(Test-Path $Path)) { New-Item -ItemType Directory -Path $Path -Force | Out-Null }
