@@ -31,11 +31,16 @@
 	Using a mounted KAPE image, write the output to a local drive
 .LINK
 	https://ericzimmerman.github.io/
+.LINK
+	https://www.sans.org/posters/hunt-evil/
+.LINK
+	https://www.kroll.com/en/insights/publications/cyber/kroll-artifact-parser-extractor-kape
 .NOTES
 	Author: esecrpm
 	
 	Revision History
-	2022-02-02	Initial build
+	2022-02-02	0.1	Initial build
+	2022-02-03	0.2	Added test for live system
 	
 #>
 
@@ -51,7 +56,10 @@ param (
 # Variable assignment
 $Tools = "C:\ForensicTools\ZimmermanTools"
 $Source = $SrcPath+"\Users"
-if ($SrcPath = $Env:SystemDrive) { $SrcPath = $SrcPath+"\" }
+if ($SrcPath = $Env:SystemDrive) {
+	$Live = $True
+	$SrcPath = $SrcPath+"\"
+}
 
 # Create destination path for output
 New-Item -Path $DstPath -ItemType Directory | Out-Null
@@ -545,13 +553,17 @@ New-Item -Path $DstPath -ItemType Directory | Out-Null
 
 # Registry
 & $Tools\RECmd\RECmd.exe -d $SrcPath --bn $Tools\RECmd\BatchExamples\Kroll_Batch.reb --csv $DstPath --csvf LatMvmt_Registry.csv | Out-File -Encoding ASCII -FilePath $DstPath\!RECmd_Messages.txt
-& $Tools\SBECmd.exe -l --dedupe --csv $DstPath --csvf LatMvmt_ShellBags.csv | Out-File -Encoding ASCII -FilePath $DstPath\!SBECmd_Messages.txt
+If ($Live) {
+	& $Tools\SBECmd.exe -l --dedupe --csv $DstPath --csvf LatMvmt_ShellBags.csv | Out-File -Encoding ASCII -FilePath $DstPath\!SBECmd_Messages.txt
+} else {
+	& $Tools\SBECmd.exe -d $SrcPath\Users --dedupe --csv $DstPath --csvf LatMvmt_ShellBags.csv | Out-File -Encoding ASCII -FilePath $DstPath\!SBECmd_Messages.txt
+}	
 & $Tools\AppCompatCacheParser.exe -f $SrcPath\Windows\System32\config\SYSTEM --csv $DstPath --csvf LatMvmt_ShimCache.csv | Out-File -Encoding ASCII -FilePath $DstPath\!AppCompatCache_Messages.txt
 & $Tools\AmcacheParser.exe -f $SrcPath\Windows\appcompat\Programs\Amcache.hve --csv $DstPath --csvf LatMvmt_Amcache.csv | Out-File -Encoding ASCII -FilePath $DstPath\!Amcache_Source_Messages.txt
 
 # File System
 & $Tools\PECmd.exe -d $SrcPath\Windows\Prefetch -q --csv $DstPath --csvf LatMvmt_Prefetch.csv | Out-File -Encoding ASCII -FilePath $DstPath\!PECmd_Messages.txt
-& $Tools\MFTECmd.exe -f '$SrcPath\$MFT' --csv $DstPath --csvf LatMvmt_mft.csv | Out-File -Encoding ASCII -FilePath $DstPath\!MFTECmd_Messages.txt
+& $Tools\MFTECmd.exe -f $SrcPath'\$MFT' --csv $DstPath --csvf LatMvmt_mft.csv | Out-File -Encoding ASCII -FilePath $DstPath\!MFTECmd_Messages.txt
 & $Tools\JLECmd.exe -d $SrcPath\Users -q --csv $DstPath --csvf LatMvmt_JumpLists.csv | Out-File -Encoding ASCII -FilePath $DstPath\!JLECmd_Messages.txt
 & $Tools\LECmd.exe -d $SrcPath\Users -q --neb --csv $DstPath --csvf LatMvmt_Shortcuts.csv | Out-File -Encoding ASCII -FilePath $DstPath\!LECmd_Messages.txt
 Get-ChildItem $Source -Filter ConsoleHost_history.txt -Recurse -ErrorAction SilentlyContinue -Force | foreach {
